@@ -18,7 +18,6 @@ use serde::{Deserialize, Serialize};
 use curv::arithmetic::traits::*;
 use curv::BigInt;
 use paillier::{extract_nroot, DecryptionKey, EncryptionKey};
-use rayon::prelude::*;
 
 use super::errors::IncorrectProof;
 
@@ -88,7 +87,7 @@ impl NiCorrectKeyProof {
         let gcd_test = alpha_primorial.gcd(&ek.n);
 
         let derived_rho_vec = (0..M2)
-            .into_par_iter()
+            .into_iter()
             .map(|i| BigInt::mod_pow(&self.sigma_vec[i], &ek.n, &ek.n))
             .collect::<Vec<BigInt>>();
 

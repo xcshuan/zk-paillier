@@ -18,7 +18,6 @@ use thiserror::Error;
 use curv::arithmetic::traits::*;
 use curv::BigInt;
 use paillier::{extract_nroot, DecryptionKey, EncryptionKey};
-use rayon::prelude::*;
 
 use super::errors::IncorrectProof;
 use super::utils::compute_digest;
@@ -65,12 +64,12 @@ impl CorrectKey {
         // Compute challenges in the form of n-powers
 
         let s: Vec<_> = (0..STATISTICAL_ERROR_FACTOR)
-            .into_par_iter()
+            .into_iter()
             .map(|_| BigInt::sample_below(&ek.n))
             .collect();
 
         let sn: Vec<_> = s
-            .par_iter()
+            .iter()
             .map(|si| BigInt::mod_pow(si, &ek.n, &ek.n))
             .collect();
 
@@ -78,20 +77,20 @@ impl CorrectKey {
         // TODO[Morten] introduce new proof type for this that can be used independently?
 
         let r: Vec<_> = (0..STATISTICAL_ERROR_FACTOR)
-            .into_par_iter()
+            .into_iter()
             .map(|_| BigInt::sample_below(&ek.n))
             .collect();
 
         let rn: Vec<_> = r
-            .par_iter()
+            .iter()
             .map(|ri| BigInt::mod_pow(ri, &ek.n, &ek.n))
             .collect();
 
         let e = compute_digest(iter::once(&ek.n).chain(&sn).chain(&rn));
 
         let z: Vec<_> = r
-            .par_iter()
-            .zip(s.par_iter())
+            .iter()
+            .zip(s.iter())
             .map(|(ri, si)| (ri * BigInt::mod_pow(si, &e, &ek.n)) % &ek.n)
             .collect();
 
@@ -109,7 +108,7 @@ impl CorrectKey {
         // check sn co-prime with n
         let not_coprime = challenge
             .sn
-            .par_iter()
+            .iter()
             .any(|sni| BigInt::egcd(&dk_n, sni).0 != BigInt::one());
         if not_coprime {
             return Err(CorrectKeyProveError::SniNotCoprimeWithN);
@@ -118,7 +117,7 @@ impl CorrectKey {
         // check z co-prime with n
         let not_coprime = challenge
             .z
-            .par_iter()
+            .iter()
             .any(|zi| BigInt::egcd(&dk_n, zi).0 != BigInt::one());
         if not_coprime {
             return Err(CorrectKeyProveError::ZiNotCoprimeWithN);
@@ -130,8 +129,8 @@ impl CorrectKey {
         let phimine = &phi - (&challenge.e % &phi);
         let rn: Vec<_> = challenge
             .z
-            .par_iter()
-            .zip(challenge.sn.par_iter())
+            .iter()
+            .zip(challenge.sn.iter())
             .map(|(zi, sni)| {
                 let zn = BigInt::mod_pow(zi, &dk_n, &dk_n);
                 let snphi = BigInt::mod_pow(sni, &phimine, &dk_n);
@@ -141,7 +140,7 @@ impl CorrectKey {
 
         // check rn co-prime with n
         let not_coprime = rn
-            .par_iter()
+            .iter()
             .any(|rni| BigInt::egcd(&dk_n, rni).0 != BigInt::one());
         if not_coprime {
             return Err(CorrectKeyProveError::RniNotCoprimeWithN);
